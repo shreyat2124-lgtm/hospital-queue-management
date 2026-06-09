@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Users Table (For Admins, Doctors, and Patients to login)
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  Doctor  Doctor?
+  Patient Patient?
+}
+
+// 2. Departments Table (e.g. Cardiology, Neurology)
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  Doctors Doctor[]
+  Tokens  Token[]
+}
+
+// 3. Doctors Table
+model Doctor {
+  id                     Int     @id @default(autoincrement())
+  userId                 Int     @unique
+  departmentId           Int
+  specialization         String
+  avgConsultationMinutes Int     @default(15)
+  isAvailable            Boolean @default(true)
+
+  User       User       @relation(fields: [userId], references: [id])
+  Department Department @relation(fields: [departmentId], references: [id])
+  Tokens     Token[]
+}
+
+// 4. Patients Table
+model Patient {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @unique
+  phone       String?
+  dateOfBirth DateTime?
+  bloodGroup  String?
+
+  User   User    @relation(fields: [userId], references: [id])
+  Tokens Token[]
+}
+
+// 5. Tokens Table (The actual Queue)
+model Token {
+  id                        Int         @id @default(autoincrement())
+  tokenNumber               Int
+  patientId                 Int
+  doctorId                  Int
+  departmentId              Int
+  status                    TokenStatus @default(WAITING)
+  priority                  Priority    @default(NORMAL)
+  symptoms                  String
+  estimatedWaitMinutes      Int
+  actualConsultationMinutes Int?
+  bookedAt                  DateTime    @default(now())
+  calledAt                  DateTime?
+  completedAt               DateTime?
+  queueDate                 DateTime
+
+  Patient    Patient    @relation(fields: [patientId], references: [id])
+  Doctor     Doctor     @relation(fields: [doctorId], references: [id])
+  Department Department @relation(fields: [departmentId], references: [id])
+}
+
+// These are our specific choices (Enums)
+enum Role {
+  ADMIN
+  DOCTOR
+  PATIENT
+}
+
+enum TokenStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  NORMAL
+  URGENT
+  EMERGENCY
+}
