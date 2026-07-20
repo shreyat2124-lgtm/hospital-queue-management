@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.custom-shadow { box-shadow: 0px 10px 30px rgba(20, 35, 76, 0.04); }
+.hero-bg { background-color: #8178ff; }
+.page-bg { background-color: #f8f8fc; }
+.focus-glow:focus { border-color: #8178ff; box-shadow: 0 0 0 4px rgba(129, 120, 255, 0.2); }
+
+/* Ensure Material Symbols load correctly */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
