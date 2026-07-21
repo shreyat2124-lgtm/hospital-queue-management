@@ -1,0 +1,10 @@
+# Customize GitHub Language Stats
+
+# Treat JSX files as HTML so it shows up on the language bar
+frontend/src/**/*.jsx linguist-language=HTML
+
+# Ensure CSS is properly tracked
+frontend/src/**/*.css linguist-language=CSS
+
+# Backend stays as JavaScript
+backend/**/*.js linguist-language=JavaScript
