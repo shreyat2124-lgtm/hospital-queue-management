@@ -1,138 +1,118 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Activity, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Patient'); // 'Patient' | 'Doctor' | 'Admin'
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log(`Login attempt: ${email} as ${role}`);
-    alert(`Signing in as ${role}...`);
-  };
-
+  const navigate = useNavigate();
   return (
-    <div className="flex-grow flex flex-col relative w-full h-full">
-      {/* Top Navbar */}
-      <nav className="bg-surface shadow-sm border-b border-outline-variant/30 w-full top-0 z-50">
+    <div className="font-body-md text-on-surface antialiased bg-background min-h-screen flex flex-col w-full relative">
+      {/* Background Decorators */}
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-secondary-fixed/30 rounded-full blur-[120px] -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3"></div>
+      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-primary-fixed/30 rounded-full blur-[100px] -z-10 pointer-events-none -translate-x-1/3 translate-y-1/3"></div>
+
+      {/* Top Navigation */}
+      <motion.nav 
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-surface/60 backdrop-blur-xl shadow-sm border-b border-outline-variant/30 w-full top-0 z-50 sticky"
+      >
         <div className="flex justify-between items-center px-margin-desktop py-4 max-w-container-max-width mx-auto">
           <div className="flex items-center gap-stack-md">
-            <Link className="font-headline-md text-headline-md font-bold text-primary" to="/">Mediso</Link>
+            <Link className="font-brand text-headline-md font-bold text-primary flex items-center gap-2" to="/">
+              <Activity className="w-8 h-8 text-secondary" />
+              Cura
+            </Link>
             <div className="hidden md:flex gap-stack-md ml-stack-lg">
               <Link className="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors duration-200" to="#">Help</Link>
               <Link className="font-label-md text-label-md text-on-surface-variant hover:text-secondary transition-colors duration-200" to="#">Contact Support</Link>
             </div>
           </div>
           <div>
-            <Link className="font-label-md text-label-md text-secondary font-bold hover:text-secondary transition-colors duration-200" to="/login">Sign In</Link>
+            <Link className="font-label-md text-label-md text-primary-container hover:text-secondary transition-colors duration-200" to="/">Back to Home</Link>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
-      {/* Hero/Header Section */}
-      <div className="hero-bg w-full h-[409px] absolute top-0 left-0 z-0 flex items-center justify-center">
-        {/* Abstract background pattern placeholder for a premium feel */}
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-      </div>
+      {/* Main Content */}
+      <main className="flex-grow flex items-center justify-center py-section-gap px-margin-mobile md:px-margin-desktop z-10">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white/80 backdrop-blur-2xl rounded-[32px] p-stack-lg md:p-12 shadow-premium-glass border border-white/50 w-full max-w-[500px] relative overflow-hidden"
+        >
+          {/* Subtle card glow */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-2xl rounded-full"></div>
 
-      {/* Content Container */}
-      <div className="flex-grow flex items-center justify-center px-margin-mobile md:px-margin-desktop py-section-gap z-10 relative mt-[102px]">
-        {/* Main Login Card */}
-        <div className="bg-surface-container-lowest custom-shadow border border-outline-variant/30 rounded-[32px] w-full max-w-[480px] p-stack-lg md:p-[40px] flex flex-col gap-stack-lg">
-          
-          {/* Card Header */}
-          <div className="text-center space-y-stack-sm">
-            <h1 className="font-headline-lg text-headline-lg text-primary-container">Welcome Back</h1>
-            <p className="font-body-md text-body-md text-on-surface-variant">Please enter your details to sign in.</p>
+          <div className="text-center mb-stack-lg relative z-10">
+            <div className="w-16 h-16 bg-surface-container-low rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-outline-variant/20">
+              <ShieldCheck className="w-8 h-8 text-secondary" />
+            </div>
+            <h1 className="font-headline-lg text-headline-lg text-primary-container mb-2">Welcome Back</h1>
+            <p className="font-body-md text-body-md text-on-surface-variant">Sign in to access your dashboard</p>
           </div>
 
-          {/* Role Switcher */}
-          <div className="flex bg-surface-container-low p-1 rounded-full w-full mx-auto">
-            {['Patient', 'Doctor', 'Admin'].map(r => (
-              <button 
-                key={r}
-                type="button"
-                onClick={() => setRole(r)}
-                className={`flex-1 py-2 px-4 rounded-full font-label-md text-label-md transition-all text-center ${role === r ? 'bg-surface-container-lowest text-primary-container shadow-sm' : 'text-on-surface-variant hover:text-primary-container'}`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-
-          {/* Login Form */}
-          <form className="flex flex-col gap-stack-md" onSubmit={handleSubmit}>
-            {/* Email Input */}
-            <div className="flex flex-col gap-unit">
-              <label className="font-label-md text-label-md text-primary-container" htmlFor="email">Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[20px]">mail</span>
-                </div>
-                <input 
-                  className="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border-2 border-[#e2e8f0] rounded-xl font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus-glow transition-all duration-200" 
-                  id="email" 
-                  placeholder="Enter your email" 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
+          <form className="flex flex-col gap-stack-md relative z-10">
+            <div className="flex flex-col gap-2">
+              <label className="font-label-md text-label-md text-primary-container font-medium" htmlFor="email">Email Address</label>
+              <input 
+                className="w-full bg-surface-container-low border border-outline-variant/50 rounded-xl px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/20 transition-all focus-glow" 
+                id="email" 
+                placeholder="doctor@cura.com" 
+                type="email" 
+              />
             </div>
 
-            {/* Password Input */}
-            <div className="flex flex-col gap-unit">
-              <label className="font-label-md text-label-md text-primary-container" htmlFor="password">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[20px]">lock</span>
-                </div>
-                <input 
-                  className="w-full pl-11 pr-11 py-3 bg-surface-container-lowest border-2 border-[#e2e8f0] rounded-xl font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus-glow transition-all duration-200" 
-                  id="password" 
-                  placeholder="Enter your password" 
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex justify-between items-center">
+                <label className="font-label-md text-label-md text-primary-container font-medium" htmlFor="password">Password</label>
+                <Link className="font-label-sm text-label-sm text-secondary hover:underline" to="#">Forgot Password?</Link>
               </div>
-              <div className="flex justify-end mt-1">
-                <a className="font-label-md text-label-md text-[#8178ff] hover:underline" href="#">Forgot Password?</a>
-              </div>
+              <input 
+                className="w-full bg-surface-container-low border border-outline-variant/50 rounded-xl px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/20 transition-all focus-glow" 
+                id="password" 
+                placeholder="••••••••" 
+                type="password" 
+              />
             </div>
 
-            {/* Submit Button */}
-            <button 
-              className="w-full bg-[#14234c] hover:bg-[#14234c]/90 text-white font-label-md text-label-md py-4 px-8 rounded-xl mt-stack-sm transition-all shadow-sm hover:shadow-md active:scale-[0.98]" 
-              type="submit"
+            <div className="flex items-center gap-2 mt-2">
+              <input 
+                className="w-5 h-5 rounded-[4px] border-outline-variant text-secondary focus:ring-secondary cursor-pointer" 
+                id="remember" 
+                type="checkbox" 
+              />
+              <label className="font-body-md text-body-md text-on-surface-variant cursor-pointer" htmlFor="remember">Remember me for 30 days</label>
+            </div>
+
+            <motion.button 
+              onClick={() => navigate('/admin-dashboard')}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full bg-primary-container text-white rounded-xl py-4 font-label-md text-label-md shadow-md hover:bg-primary transition-colors mt-4 flex justify-center items-center gap-2 group"
+              type="button"
             >
-              Sign In as {role}
-            </button>
+              Sign In to Workspace
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
           </form>
+        </motion.div>
+      </main>
 
-          {/* Sign Up Link */}
-          <div className="text-center mt-stack-sm">
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              Don't have an account? <a className="font-label-md text-label-md text-[#8178ff] hover:underline ml-1" href="#">Sign Up</a>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Component */}
-      <footer className="bg-surface border-t border-outline-variant/30 full-width mt-auto">
+      {/* Footer */}
+      <footer className="bg-surface/80 backdrop-blur-xl border-t border-outline-variant/30 full-width mt-auto z-10">
         <div className="flex flex-col md:flex-row justify-between items-center px-margin-desktop py-stack-lg max-w-container-max-width mx-auto gap-stack-md">
-          <div>
-            <Link className="font-headline-md text-headline-md font-bold text-primary" to="/">Mediso</Link>
-            <p className="font-label-sm text-label-sm text-secondary mt-1">© 2024 Mediso Healthcare. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-secondary" />
+            <div>
+              <Link className="font-brand text-title-lg font-bold text-primary" to="/">Cura</Link>
+              <p className="font-label-sm text-label-sm text-secondary mt-1">&copy; 2024 Cura Healthcare. All rights reserved.</p>
+            </div>
           </div>
           <div className="flex gap-stack-md font-label-sm text-label-sm text-on-surface-variant">
             <Link className="hover:text-primary transition-colors duration-200 opacity-80 hover:opacity-100" to="#">Terms of Service</Link>
             <Link className="hover:text-primary transition-colors duration-200 opacity-80 hover:opacity-100" to="#">Privacy Policy</Link>
-            <Link className="hover:text-primary transition-colors duration-200 opacity-80 hover:opacity-100" to="#">Accessibility</Link>
           </div>
         </div>
       </footer>

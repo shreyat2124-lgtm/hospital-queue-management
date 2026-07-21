@@ -66,7 +66,9 @@ module.exports = {
       "boxShadow": {
         "ambient": "0px 10px 40px rgba(20, 35, 76, 0.06)",
         "ambient-deep": "0px 20px 60px rgba(20, 35, 76, 0.12)",
-        "glass": "0 8px 32px 0 rgba(31, 38, 135, 0.07)"
+        "glass": "0 8px 32px 0 rgba(31, 38, 135, 0.07)",
+        "premium-glass": "0 4px 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.5)",
+        "premium-hover": "0 15px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5)"
       },
       "spacing": {
         "container-max-width": "1280px",
@@ -80,17 +82,17 @@ module.exports = {
         "margin-desktop": "40px"
       },
       "fontFamily": {
-        "label-sm": ["'Mulish'", "sans-serif"],
-        "headline-lg-mobile": ["'Lora'", "serif"],
-        "label-md": ["'Mulish'", "sans-serif"],
-        "title-lg": ["'Lora'", "serif"],
-        "headline-lg": ["'Lora'", "serif"],
-        "body-lg": ["'Mulish'", "sans-serif"],
-        "headline-md": ["'Lora'", "serif"],
-        "display-lg": ["'Lora'", "serif"],
-        "body-md": ["'Mulish'", "sans-serif"],
-        "sans": ["'Mulish'", "sans-serif"],
-        "serif": ["'Lora'", "serif"]
+        "brand": ["'Space Grotesk'", "sans-serif"],
+        "headline-lg-mobile": ["'Outfit'", "sans-serif"],
+        "headline-lg": ["'Outfit'", "sans-serif"],
+        "headline-md": ["'Outfit'", "sans-serif"],
+        "display-lg": ["'Outfit'", "sans-serif"],
+        "title-lg": ["'Outfit'", "sans-serif"],
+        "body-lg": ["'Plus Jakarta Sans'", "sans-serif"],
+        "body-md": ["'Plus Jakarta Sans'", "sans-serif"],
+        "label-md": ["'Plus Jakarta Sans'", "sans-serif"],
+        "label-sm": ["'Plus Jakarta Sans'", "sans-serif"],
+        "sans": ["'Plus Jakarta Sans'", "sans-serif"]
       }
     }
   },

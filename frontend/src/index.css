@@ -7,8 +7,18 @@
 .page-bg { background-color: #f8f8fc; }
 .focus-glow:focus { border-color: #8178ff; box-shadow: 0 0 0 4px rgba(129, 120, 255, 0.2); }
 
-/* Ensure Material Symbols load correctly */
-.material-symbols-outlined {
-  font-family: 'Material Symbols Outlined' !important;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+/* Premium Animated Mesh Gradient Background */
+.mesh-bg {
+  background-color: #fbf8fd;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(245,100%,79%,0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(280,100%,82%,0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(215,100%,75%,0.15) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(255,100%,85%,0.15) 0px, transparent 50%);
+  background-size: 200% 200%;
+  animation: meshFlow 15s ease-in-out infinite alternate;
+}
+@keyframes meshFlow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
 }
