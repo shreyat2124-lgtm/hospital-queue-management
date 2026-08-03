@@ -1,10 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+
+  const { login } = useAuth();
+
+  // Form state — tracks what the user types
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Called when form is submitted
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const user = await login(email, password);
+
+      // Redirect based on role
+      switch (user.role) {
+        case 'ADMIN':
+          navigate('/admin-dashboard');
+          break;
+        case 'DOCTOR':
+          navigate('/doctor-dashboard');
+          break;
+        case 'PATIENT':
+          navigate('/book-appointment');
+          break;
+        default:
+          navigate('/');
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        'Login failed. Please check your credentials.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="font-body-md text-on-surface antialiased bg-background min-h-screen flex flex-col w-full relative">
       {/* Background Decorators */}
@@ -53,14 +97,29 @@ export default function Login() {
             <p className="font-body-md text-body-md text-on-surface-variant">Sign in to access your dashboard</p>
           </div>
 
-          <form className="flex flex-col gap-stack-md relative z-10">
+          <form className="flex flex-col gap-stack-md relative z-10" onSubmit={handleLogin}>
+            
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 font-body-md text-body-md text-center"
+              >
+                {error}
+              </motion.div>
+            )}
+
             <div className="flex flex-col gap-2">
               <label className="font-label-md text-label-md text-primary-container font-medium" htmlFor="email">Email Address</label>
               <input 
                 className="w-full bg-surface-container-low border border-outline-variant/50 rounded-xl px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/20 transition-all focus-glow" 
                 id="email" 
-                placeholder="doctor@cura.com" 
-                type="email" 
+               placeholder="doctor@cura.com" 
+               type="email"
+                value={email}
+               onChange={(e) => setEmail(e.target.value)}
+               required
+                disabled={loading}
               />
             </div>
 
@@ -74,6 +133,10 @@ export default function Login() {
                 id="password" 
                 placeholder="••••••••" 
                 type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
               />
             </div>
 
@@ -86,16 +149,27 @@ export default function Login() {
               <label className="font-body-md text-body-md text-on-surface-variant cursor-pointer" htmlFor="remember">Remember me for 30 days</label>
             </div>
 
-            <motion.button 
-              onClick={() => navigate('/admin-dashboard')}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full bg-primary-container text-white rounded-xl py-4 font-label-md text-label-md shadow-md hover:bg-primary transition-colors mt-4 flex justify-center items-center gap-2 group"
-              type="button"
+           <motion.button 
+            whileHover={{ scale: loading ? 1 : 1.02 }}
+            whileTap={{ scale: loading ? 1 : 0.98 }}
+           className="w-full bg-primary-container text-white rounded-xl py-4 font-label-md text-label-md shadow-md hover:bg-primary transition-colors mt-4 flex justify-center items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+           type="submit"
+            disabled={loading}
             >
+          {loading ? (
+             <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+             Signing in...
+            </>
+            ) : (
+             <>
               Sign In to Workspace
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </>
+            )}
             </motion.button>
+
+                  
           </form>
         </motion.div>
       </main>
