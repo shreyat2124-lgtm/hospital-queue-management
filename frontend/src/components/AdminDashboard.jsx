@@ -2,10 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Clock, Bell, Settings, Receipt, AlertTriangle, Heart, Baby, Brain, Bone, Droplet, Eye, History, Volume2, CheckCircle } from 'lucide-react';
+import api from '../services/api';
+import socket from '../services/socket';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminDashboard() {
+  const { user, logout } = useAuth();
   const [timeString, setTimeString] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [deptStats, setDeptStats] = useState({});
+  const [loading, setLoading] = useState(true);
 
+  // Clock
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -16,7 +24,60 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Framer motion variants
+  // Fetch departments + doctors + queue stats
+  const fetchAllData = async () => {
+    try {
+      const [deptRes, docRes] = await Promise.all([
+        api.get('/departments'),
+        api.get('/doctors'),
+      ]);
+
+      setDepartments(deptRes.data.departments);
+
+      // For each doctor, fetch their queue status and group by department
+      const stats = {};
+      for (const doc of docRes.data.doctors) {
+        try {
+          const { data } = await api.get(`/queues/status/${doc.id}`);
+          const deptName = doc.department;
+          if (!stats[deptName]) {
+            stats[deptName] = { totalWaiting: 0, totalCompleted: 0, doctorCount: 0 };
+          }
+          stats[deptName].totalWaiting += data.totalWaiting;
+          stats[deptName].totalCompleted += data.totalCompleted;
+          stats[deptName].doctorCount += 1;
+        } catch (e) {
+          // skip if queue fetch fails for this doctor
+        }
+      }
+      setDeptStats(stats);
+    } catch (err) {
+      console.error('Failed to fetch admin data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllData();
+
+    socket.connect();
+    socket.on('queue-update', () => {
+      fetchAllData();
+    });
+    return () => socket.off('queue-update');
+  }, []);
+
+  // Icon mapping
+  const iconMap = {
+    'Cardiology': <Heart className="text-secondary w-5 h-5 fill-secondary" />,
+    'Neurology': <Brain className="text-secondary w-5 h-5" />,
+    'Orthopedics': <Bone className="text-secondary w-5 h-5" />,
+    'Pediatrics': <Baby className="text-secondary w-5 h-5 fill-secondary" />,
+    'Dermatology': <Droplet className="text-secondary w-5 h-5 fill-secondary" />,
+    'Ophthalmology': <Eye className="text-secondary w-5 h-5 fill-secondary" />,
+  };
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -28,6 +89,14 @@ export default function AdminDashboard() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="text-on-background min-h-screen bg-transparent flex flex-col antialiased relative">
@@ -66,7 +135,7 @@ export default function AdminDashboard() {
             </button>
             <button className="p-2 hover:bg-surface-container rounded-full transition-colors"><Settings className="w-5 h-5" /></button>
           </div>
-          <img alt="Administrator Profile" className="w-10 h-10 rounded-full object-cover border-2 border-surface-container-highest shadow-sm" src="/images/admin_headshot_1784658368965.jpg" />
+          <button onClick={logout} className="font-label-sm text-on-surface-variant hover:text-red-500 transition-colors">Logout</button>
         </div>
       </motion.header>
 
@@ -109,7 +178,6 @@ export default function AdminDashboard() {
           <section>
             <div className="flex justify-between items-end mb-stack-md">
               <h3 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Department Status</h3>
-              <span className="font-label-md text-label-md text-secondary cursor-pointer hover:underline">View Details</span>
             </div>
             
             <motion.div 
@@ -118,95 +186,53 @@ export default function AdminDashboard() {
               animate="show"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter"
             >
-              {/* Cardiology */}
-              <motion.div variants={item} className="bg-primary/90 backdrop-blur-xl text-on-primary rounded-[32px] p-stack-lg flex flex-col justify-between relative overflow-hidden shadow-premium-glass hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300 border border-primary">
-                <div className="relative z-10">
-                  <div className="flex justify-between items-center mb-6">
-                    <h4 className="font-title-lg text-title-lg font-semibold flex items-center gap-2"><Heart className="text-secondary w-5 h-5 fill-secondary" />Cardiology</h4>
-                    <span className="bg-success/10 text-emerald-300 px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-emerald-500/30">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Normal
-                    </span>
-                  </div>
-                  <div className="mb-6">
-                    <span className="block font-label-sm text-label-sm text-primary-fixed-dim uppercase tracking-wider mb-1">Average Wait</span>
-                    <span className="font-display-lg text-display-lg text-secondary-fixed">24<span className="text-title-lg text-secondary-fixed-dim ml-1">mins</span></span>
-                  </div>
-                  <div className="flex justify-between items-center border-t border-surface-tint/30 pt-4">
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-primary-fixed-dim">Doctors on Shift</span>
-                      <span className="font-title-lg text-title-lg font-medium">3 Active</span>
-                    </div>
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-primary-fixed-dim">Queue</span>
-                      <span className="font-title-lg text-title-lg font-medium">12</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              
-              {/* Pediatrics */}
-              <motion.div variants={item} className="bg-primary/90 backdrop-blur-xl text-on-primary rounded-[32px] p-stack-lg flex flex-col justify-between relative overflow-hidden shadow-premium-glass hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300 border border-primary">
-                <div className="relative z-10">
-                  <div className="flex justify-between items-center mb-6">
-                    <h4 className="font-title-lg text-title-lg font-semibold flex items-center gap-2"><Baby className="text-secondary w-5 h-5 fill-secondary" />Pediatrics</h4>
-                    <span className="bg-warning/10 text-amber-300 px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-amber-500/30">
-                      <span className="w-2 h-2 rounded-full bg-amber-400"></span> Busy
-                    </span>
-                  </div>
-                  <div className="mb-6">
-                    <span className="block font-label-sm text-label-sm text-primary-fixed-dim uppercase tracking-wider mb-1">Average Wait</span>
-                    <span className="font-display-lg text-display-lg text-tertiary-fixed-dim">45<span className="text-title-lg text-primary-fixed-dim ml-1">mins</span></span>
-                  </div>
-                  <div className="flex justify-between items-center border-t border-surface-tint/30 pt-4">
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-primary-fixed-dim">Doctors on Shift</span>
-                      <span className="font-title-lg text-title-lg font-medium">4 Active</span>
-                    </div>
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-primary-fixed-dim">Queue</span>
-                      <span className="font-title-lg text-title-lg font-medium">28</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-              
-              {[
-                { name: 'Neurology', wait: 15, docs: 2, queue: 5, icon: <Brain className="text-secondary w-5 h-5" />, status: 'Normal', color: 'emerald' },
-                { name: 'Orthopedics', wait: 20, docs: 3, queue: 8, icon: <Bone className="text-secondary w-5 h-5" />, status: 'Normal', color: 'emerald' },
-                { name: 'Dermatology', wait: 12, docs: 2, queue: 4, icon: <Droplet className="text-secondary w-5 h-5 fill-secondary" />, status: 'Normal', color: 'emerald' },
-                { name: 'Ophthalmology', wait: 55, docs: 1, queue: 14, icon: <Eye className="text-secondary w-5 h-5 fill-secondary" />, status: 'Delayed', color: 'error' }
-              ].map((dept, index) => (
-                <motion.div key={index} variants={item} className="bg-white/70 backdrop-blur-xl rounded-[32px] p-stack-lg flex flex-col justify-between shadow-premium-glass hover:shadow-premium-hover border border-white/50 hover:-translate-y-1 transition-all duration-300">
-                  <div>
-                    <div className="flex justify-between items-center mb-6">
-                      <h4 className="font-title-lg text-title-lg font-semibold text-primary flex items-center gap-2">{dept.icon}{dept.name}</h4>
-                      {dept.status === 'Normal' ? (
-                        <span className="bg-success/10 text-emerald-600 px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-emerald-200">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Normal
+              {departments.map((dept, index) => {
+                const stats = deptStats[dept.name] || { totalWaiting: 0, totalCompleted: 0, doctorCount: 0 };
+                const isFirstTwo = index < 2;
+                
+                return (
+                  <motion.div 
+                    key={dept.id} 
+                    variants={item} 
+                    className={`${isFirstTwo ? 'bg-primary/90 backdrop-blur-xl text-on-primary border border-primary' : 'bg-white/70 backdrop-blur-xl border border-white/50'} rounded-[32px] p-stack-lg flex flex-col justify-between shadow-premium-glass hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300`}
+                  >
+                    <div className={isFirstTwo ? 'relative z-10' : ''}>
+                      <div className="flex justify-between items-center mb-6">
+                        <h4 className={`font-title-lg text-title-lg font-semibold flex items-center gap-2 ${isFirstTwo ? '' : 'text-primary'}`}>
+                          {iconMap[dept.name] || <Heart className="text-secondary w-5 h-5" />}
+                          {dept.name}
+                        </h4>
+                        <span className={`px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 ${
+                          stats.totalWaiting > 10
+                            ? 'bg-error/10 text-error border border-error/20'
+                            : isFirstTwo
+                              ? 'bg-success/10 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-success/10 text-emerald-600 border border-emerald-200'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${stats.totalWaiting > 10 ? 'bg-error' : 'bg-emerald-500'}`}></span>
+                          {stats.totalWaiting > 10 ? 'Busy' : 'Normal'}
                         </span>
-                      ) : (
-                        <span className="bg-error/10 text-error px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 border border-error/20">
-                          <span className="w-2 h-2 rounded-full bg-error"></span> Delayed
+                      </div>
+                      <div className="mb-6">
+                        <span className={`block font-label-sm text-label-sm uppercase tracking-wider mb-1 ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Waiting</span>
+                        <span className={`font-display-lg text-display-lg ${isFirstTwo ? 'text-secondary-fixed' : stats.totalWaiting > 10 ? 'text-error' : 'text-primary'}`}>
+                          {stats.totalWaiting}<span className={`text-title-lg ml-1 ${isFirstTwo ? 'text-secondary-fixed-dim' : 'text-outline'}`}>patients</span>
                         </span>
-                      )}
+                      </div>
                     </div>
-                    <div className="mb-6">
-                      <span className="block font-label-sm text-label-sm text-outline uppercase tracking-wider mb-1">Average Wait</span>
-                      <span className={`font-display-lg text-display-lg ${dept.status === 'Normal' ? 'text-primary' : 'text-error'}`}>{dept.wait}<span className="text-title-lg text-outline ml-1">mins</span></span>
+                    <div className={`flex justify-between items-center border-t pt-4 ${isFirstTwo ? 'border-surface-tint/30' : 'border-outline-variant/30'}`}>
+                      <div>
+                        <span className={`block font-label-sm text-label-sm ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Doctors</span>
+                        <span className={`font-title-lg text-title-lg font-medium ${isFirstTwo ? '' : 'text-primary'}`}>{stats.doctorCount} Active</span>
+                      </div>
+                      <div>
+                        <span className={`block font-label-sm text-label-sm ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Done Today</span>
+                        <span className={`font-title-lg text-title-lg font-medium ${isFirstTwo ? '' : 'text-primary'}`}>{stats.totalCompleted}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center border-t border-outline-variant/30 pt-4">
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-outline">Doctors</span>
-                      <span className="font-title-lg text-title-lg font-medium text-primary">{dept.docs} Active</span>
-                    </div>
-                    <div>
-                      <span className="block font-label-sm text-label-sm text-outline">Queue</span>
-                      <span className="font-title-lg text-title-lg font-medium text-primary">{dept.queue}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </motion.div>
           </section>
         </div>
