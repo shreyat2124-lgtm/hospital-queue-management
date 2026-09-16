@@ -608,15 +608,3 @@ Potential extensions include:
 
 ---
 
-## License
-
-This project is intended for educational and demonstration purposes.
-
----
-
-## Notes
-
-- Real secrets should never be committed to the repository.
-- Use example environment files for templates.
-- Store local secrets only in local `.env` files.
-- The project is currently focused on the core hospital queue workflow and is structured for future expansion.
