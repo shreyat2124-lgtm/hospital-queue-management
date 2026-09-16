@@ -123,6 +123,3 @@ The frontend runs at `http://localhost:5173` and the backend at `http://localhos
 | POST | `/api/queues/complete` | Doctor | Complete consultation |
 | GET | `/api/queues/status/:doctorId` | Any | Live queue status |
 
-## License
-
-© 2026 Cura Healthcare. All rights reserved.
