@@ -123,6 +123,90 @@ async function main() {
   console.log('🎉 Seeding complete!');
 }
 
+
+// SEED HISTORICAL DATA 
+
+async function seedHistoricalData() {
+  console.log('Seeding historical data...');
+
+  // Get all doctors and patient
+  const doctors = await prisma.doctor.findMany();
+  const patient = await prisma.patient.findFirst();
+
+  if (!patient || doctors.length === 0) {
+    console.log('Run main seed first! No doctors/patients found.');
+    return;
+  }
+
+  const symptomsList = [
+    'Chest pain and discomfort',
+    'Persistent headache',
+    'Joint pain in knees',
+    'Fever and cold',
+    'Skin rash on arms',
+    'Blurry vision',
+    'Back pain',
+    'Difficulty breathing',
+    'Stomach ache',
+    'Dizziness and nausea'
+  ];
+
+  // Generate tokens for the last 7 days
+  for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
+    const date = new Date();
+    date.setDate(date.getDate() - dayOffset);
+    date.setHours(0, 0, 0, 0);
+
+    // Random 5-12 patients per day
+    const patientCount = Math.floor(Math.random() * 8) + 5;
+
+    for (let i = 0; i < patientCount; i++) {
+      const doctor = doctors[Math.floor(Math.random() * doctors.length)];
+      const priority = Math.random() < 0.1 ? 'EMERGENCY' : Math.random() < 0.2 ? 'URGENT' : 'NORMAL';
+      const symptoms = symptomsList[Math.floor(Math.random() * symptomsList.length)];
+
+      // Random booking time between 9 AM and 5 PM
+      const bookedAt = new Date(date);
+      bookedAt.setHours(9 + Math.floor(Math.random() * 8), Math.floor(Math.random() * 60));
+
+      // Called 10-40 mins after booking
+      const waitMins = Math.floor(Math.random() * 30) + 10;
+      const calledAt = new Date(bookedAt.getTime() + waitMins * 60000);
+
+      // Consultation lasted 5-25 mins
+      const consultMins = Math.floor(Math.random() * 20) + 5;
+      const completedAt = new Date(calledAt.getTime() + consultMins * 60000);
+
+      await prisma.token.create({
+        data: {
+          tokenNumber: i + 1,
+          patientId: patient.id,
+          doctorId: doctor.id,
+          departmentId: doctor.departmentId,
+          status: 'COMPLETED',
+          priority: priority,
+          symptoms: symptoms,
+          estimatedWaitMinutes: waitMins,
+          actualConsultationMinutes: consultMins,
+          bookedAt: bookedAt,
+          calledAt: calledAt,
+          completedAt: completedAt,
+          queueDate: date
+        }
+      });
+    }
+    console.log(`  Day -${dayOffset}: Created ${patientCount} tokens`);
+  }
+  console.log('Historical data seeded!');
+}
+
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .then(() => seedHistoricalData())
+  .then(() => {
+    console.log('All seeding complete!');
+    prisma.$disconnect();
+  })
+  .catch((e) => {
+    console.error(e);
+    prisma.$disconnect();
+  });

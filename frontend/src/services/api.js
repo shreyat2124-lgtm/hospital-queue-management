@@ -1,10 +1,12 @@
 import axios from 'axios'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
 // ─── 1. Create the Axios instance ───────────────────────────────────
 // Think of this as a "customized fetch" that remembers your settings.
 // Every API call you make in the entire app will go through this.
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api',  // All requests will start with this
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',   // We're always sending JSON
   },

@@ -107,6 +107,30 @@ router.post('/call-next', auth, roleCheck(['DOCTOR']), async (req, res) => {
     const io = req.app.get('io');
     io.emit('queue-update', { doctorId: doctor.id, event: 'patient-called', tokenNumber: updated.tokenNumber });
 
+    // CHECK FOR PATIENT 2 POSITIONS AWAY (Turn is approaching)
+    const remainingWaiting = await prisma.token.findMany({
+      where: {
+        doctorId: doctor.id,
+        queueDate: today,
+        status: 'WAITING'
+      },
+      orderBy: [
+        { priority: 'desc' },
+        { bookedAt: 'asc' }
+      ],
+      take: 2
+    });
+
+    if (remainingWaiting.length > 0) {
+      // remainingWaiting[0] is the next patient (1 position away)
+      io.emit('patient-approaching', { doctorId: doctor.id, tokenNumber: remainingWaiting[0].tokenNumber });
+    }
+    
+    if (remainingWaiting.length > 1) {
+      // remainingWaiting[1] is the 2nd patient in the waiting list (2 positions away)
+      io.emit('patient-approaching', { doctorId: doctor.id, tokenNumber: remainingWaiting[1].tokenNumber });
+    }
+
     // Doctor ko batao ki kisko bulaaya — naam, symptoms, priority sab
     res.json({
       message: 'Patient called',

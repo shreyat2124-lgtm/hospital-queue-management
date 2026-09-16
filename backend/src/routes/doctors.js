@@ -8,6 +8,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
+const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -95,6 +96,76 @@ router.patch('/availability', auth, roleCheck(['DOCTOR']), async (req, res) => {
     res.json({ message: 'Availability updated', isAvailable: updated.isAvailable });
   } catch (error) {
     res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// ============================================
+// CREATE DOCTOR — Naya doctor add karo
+// POST /api/doctors
+// Body: { name, email, password, departmentId, specialization, avgConsultationMinutes }
+// Sirf ADMIN kar sakta hai
+// ============================================
+router.post('/', auth, roleCheck(['ADMIN']), async (req, res) => {
+  try {
+    const { name, email, password, departmentId, specialization, avgConsultationMinutes } = req.body;
+    
+    // Check if email already exists
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Use transaction to create both User and Doctor atomically
+    const newDoctor = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { name, email, passwordHash, role: 'DOCTOR' }
+      });
+      
+      const doctor = await tx.doctor.create({
+        data: {
+          userId: user.id,
+          departmentId: parseInt(departmentId),
+          specialization,
+          avgConsultationMinutes: parseInt(avgConsultationMinutes || 15)
+        }
+      });
+      
+      return doctor;
+    });
+
+    res.status(201).json({ message: 'Doctor created successfully', doctorId: newDoctor.id });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Failed to create doctor' });
+  }
+});
+
+// ============================================
+// DELETE DOCTOR — Doctor delete karo
+// DELETE /api/doctors/:id
+// Sirf ADMIN kar sakta hai
+// ============================================
+router.delete('/:id', auth, roleCheck(['ADMIN']), async (req, res) => {
+  try {
+    const doctorId = parseInt(req.params.id);
+    
+    const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) {
+      return res.status(404).json({ error: 'Doctor not found' });
+    }
+
+    // Delete doctor and user in transaction
+    await prisma.$transaction([
+      prisma.doctor.delete({ where: { id: doctorId } }),
+      prisma.user.delete({ where: { id: doctor.userId } })
+    ]);
+
+    res.json({ message: 'Doctor deleted successfully' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Failed to delete doctor (might have tokens assigned)' });
   }
 });
 

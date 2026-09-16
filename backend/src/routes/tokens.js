@@ -8,7 +8,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/auth');
 const roleCheck = require('../middleware/roleCheck');
-const { generateToken } = require('../services/tokenService');
+const { generateToken } = require('../services/tokenservice');
 // ↑ Business logic alag file mein hai — route file clean rahti hai
 
 const router = express.Router();
@@ -93,7 +93,7 @@ router.post('/book', auth, roleCheck(['PATIENT']), async (req, res) => {
 router.post('/emergency', auth, roleCheck(['ADMIN', 'DOCTOR']), async (req, res) => {
   try {
     // Emergency mein patient khud book nahi karta — admin/doctor uska email deta hai
-    const { patientEmail, doctorId, symptoms } = req.body;
+    const { patientEmail, doctorId, symptoms, priority } = req.body;
 
     // Email se patient dhundho (2 step process: User → Patient)
     const user = await prisma.user.findUnique({ where: { email: patientEmail } });
@@ -115,21 +115,26 @@ router.post('/emergency', auth, roleCheck(['ADMIN', 'DOCTOR']), async (req, res)
       return res.status(404).json({ error: 'Doctor not found' });
     }
 
-    // Priority hardcoded 'EMERGENCY' hai — yeh normal booking se farak hai
-    const token = await generateToken(patient.id, doctorId, doctor.departmentId, symptoms, 'EMERGENCY');
+    // Priority can be overridden for walk-ins, defaults to EMERGENCY
+    const tokenPriority = priority || 'EMERGENCY';
+    const token = await generateToken(patient.id, doctorId, doctor.departmentId, symptoms, tokenPriority);
 
-    // Real-time event — emergency alag event hai taaki frontend red alert dikha sake
+    // Real-time event — emergency alag event hai taaki frontend red alert dikha sake (only if actually emergency)
     const io = req.app.get('io');
-    io.emit('queue-update', { doctorId, event: 'emergency-token', tokenNumber: token.tokenNumber });
+    if (tokenPriority === 'EMERGENCY') {
+      io.emit('queue-update', { doctorId, event: 'emergency-token', tokenNumber: token.tokenNumber });
+    } else {
+      io.emit('queue-update', { doctorId, event: 'token-booked', tokenNumber: token.tokenNumber });
+    }
 
     res.status(201).json({
-      message: 'EMERGENCY token created',
+      message: tokenPriority === 'EMERGENCY' ? 'EMERGENCY token created' : 'Walk-in token created',
       tokenNumber: token.tokenNumber,
-      estimatedWaitMinutes: 0, // Emergency = turant (queue skip)
-      position: 1,
+      estimatedWaitMinutes: tokenPriority === 'EMERGENCY' ? 0 : token.estimatedWaitMinutes, // Emergency = turant
+      position: token.position,
       doctor: doctor.User.name,
       department: doctor.Department.name,
-      priority: 'EMERGENCY',
+      priority: tokenPriority,
       status: token.status
     });
   } catch (error) {

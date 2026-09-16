@@ -49,4 +49,19 @@ router.post('/', auth, roleCheck(['ADMIN']), async (req, res) => {
   }
 });
 
+// ============================================
+// DELETE DEPARTMENT — Department delete karo
+// DELETE /api/departments/:id
+// Sirf ADMIN kar sakta hai
+// ============================================
+router.delete('/:id', auth, roleCheck(['ADMIN']), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await prisma.department.delete({ where: { id } });
+    res.json({ message: 'Department deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete department (might have doctors assigned)' });
+  }
+});
+
 module.exports = router;

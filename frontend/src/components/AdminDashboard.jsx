@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Clock, Bell, Settings, Receipt, AlertTriangle, Heart, Baby, Brain, Bone, Droplet, Eye, History, Volume2, CheckCircle } from 'lucide-react';
+import { Search, Clock, Bell, Settings, Receipt, AlertTriangle, Heart, Baby, Brain, Bone, Droplet, Eye, History, Volume2, CheckCircle, BarChart3, Users, Clock4, X } from 'lucide-react';
 import api from '../services/api';
 import socket from '../services/socket';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,15 @@ export default function AdminDashboard() {
   const [timeString, setTimeString] = useState('');
   const [departments, setDepartments] = useState([]);
   const [deptStats, setDeptStats] = useState({});
+  const [dailyAnalytics, setDailyAnalytics] = useState(null);
+  const [trends, setTrends] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [doctorsList, setDoctorsList] = useState([]);
+  
+  // Modal State
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [modalPriority, setModalPriority] = useState('NORMAL');
+  const [modalForm, setModalForm] = useState({ patientEmail: '', doctorId: '', symptoms: '' });
 
   // Clock
   useEffect(() => {
@@ -27,12 +35,17 @@ export default function AdminDashboard() {
   // Fetch departments + doctors + queue stats
   const fetchAllData = async () => {
     try {
-      const [deptRes, docRes] = await Promise.all([
+      const [deptRes, docRes, dailyRes, trendsRes] = await Promise.all([
         api.get('/departments'),
         api.get('/doctors'),
+        api.get('/analytics/daily'),
+        api.get('/analytics/trends')
       ]);
 
       setDepartments(deptRes.data.departments);
+      setDailyAnalytics(dailyRes.data);
+      setTrends(trendsRes.data);
+      setDoctorsList(docRes.data.doctors);
 
       // For each doctor, fetch their queue status and group by department
       const stats = {};
@@ -67,6 +80,23 @@ export default function AdminDashboard() {
     });
     return () => socket.off('queue-update');
   }, []);
+
+  const openTokenModal = (priority) => {
+    setModalPriority(priority);
+    setModalForm({ patientEmail: '', doctorId: doctorsList[0]?.id || '', symptoms: '' });
+    setShowTokenModal(true);
+  };
+
+  const handleTokenSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/tokens/emergency', { ...modalForm, priority: modalPriority });
+      setShowTokenModal(false);
+      // Socket event will automatically refresh the data via queue-update
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to generate token');
+    }
+  };
 
   // Icon mapping
   const iconMap = {
@@ -111,8 +141,7 @@ export default function AdminDashboard() {
           <nav className="hidden md:flex gap-stack-lg ml-stack-lg">
             <Link to="/admin-dashboard" className="font-title-lg text-title-lg text-secondary border-b-2 border-secondary pb-1 cursor-pointer active:opacity-80">Dashboard</Link>
             <Link to="/departments" className="font-title-lg text-title-lg text-on-surface-variant hover:text-secondary transition-colors cursor-pointer active:opacity-80">Departments</Link>
-            <Link to="#" className="font-title-lg text-title-lg text-on-surface-variant hover:text-secondary transition-colors cursor-pointer active:opacity-80">Staffing</Link>
-            <Link to="#" className="font-title-lg text-title-lg text-on-surface-variant hover:text-secondary transition-colors cursor-pointer active:opacity-80">Analytics</Link>
+            
           </nav>
         </div>
         <div className="flex items-center gap-stack-lg">
@@ -151,7 +180,7 @@ export default function AdminDashboard() {
             className="grid grid-cols-1 md:grid-cols-3 gap-gutter"
           >
             {/* Generate Token Card */}
-            <motion.div variants={item} className="md:col-span-2 bg-white/70 backdrop-blur-2xl rounded-[32px] p-[32px] shadow-premium-glass hover:shadow-premium-hover flex items-center justify-between hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group border border-white/50">
+            <motion.div onClick={() => openTokenModal('NORMAL')} variants={item} className="md:col-span-2 bg-white/70 backdrop-blur-2xl rounded-[32px] p-[32px] shadow-premium-glass hover:shadow-premium-hover flex items-center justify-between hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group border border-white/50">
               <div className="absolute -right-10 -top-10 w-40 h-40 bg-secondary-container/20 rounded-full blur-3xl group-hover:bg-secondary-container/30 transition-colors"></div>
               <div>
                 <h2 className="font-headline-md text-headline-md text-primary mb-2">Generate Walk-in Token</h2>
@@ -163,7 +192,7 @@ export default function AdminDashboard() {
             </motion.div>
             
             {/* Emergency Override */}
-            <motion.div variants={item} className="bg-error-container/90 backdrop-blur-xl rounded-[32px] p-[32px] shadow-premium-glass hover:shadow-premium-hover flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-error/20">
+            <motion.div onClick={() => openTokenModal('EMERGENCY')} variants={item} className="bg-error-container/90 backdrop-blur-xl rounded-[32px] p-[32px] shadow-premium-glass hover:shadow-premium-hover flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-error/20">
               <div className="flex justify-between items-start mb-4">
                 <AlertTriangle className="text-error w-8 h-8" />
                 <span className="px-3 py-1 bg-error/10 text-error rounded-full font-label-sm text-label-sm uppercase tracking-wider">Priority</span>
@@ -188,46 +217,43 @@ export default function AdminDashboard() {
             >
               {departments.map((dept, index) => {
                 const stats = deptStats[dept.name] || { totalWaiting: 0, totalCompleted: 0, doctorCount: 0 };
-                const isFirstTwo = index < 2;
                 
                 return (
                   <motion.div 
                     key={dept.id} 
                     variants={item} 
-                    className={`${isFirstTwo ? 'bg-primary/90 backdrop-blur-xl text-on-primary border border-primary' : 'bg-white/70 backdrop-blur-xl border border-white/50'} rounded-[32px] p-stack-lg flex flex-col justify-between shadow-premium-glass hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300`}
+                    className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-[32px] p-stack-lg flex flex-col justify-between shadow-premium-glass hover:shadow-premium-hover hover:-translate-y-1 transition-all duration-300"
                   >
-                    <div className={isFirstTwo ? 'relative z-10' : ''}>
+                    <div>
                       <div className="flex justify-between items-center mb-6">
-                        <h4 className={`font-title-lg text-title-lg font-semibold flex items-center gap-2 ${isFirstTwo ? '' : 'text-primary'}`}>
+                        <h4 className="font-title-lg text-title-lg font-semibold flex items-center gap-2 text-primary">
                           {iconMap[dept.name] || <Heart className="text-secondary w-5 h-5" />}
                           {dept.name}
                         </h4>
                         <span className={`px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 ${
                           stats.totalWaiting > 10
                             ? 'bg-error/10 text-error border border-error/20'
-                            : isFirstTwo
-                              ? 'bg-success/10 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-success/10 text-emerald-600 border border-emerald-200'
+                            : 'bg-success/10 text-emerald-600 border border-emerald-200'
                         }`}>
                           <span className={`w-2 h-2 rounded-full ${stats.totalWaiting > 10 ? 'bg-error' : 'bg-emerald-500'}`}></span>
                           {stats.totalWaiting > 10 ? 'Busy' : 'Normal'}
                         </span>
                       </div>
                       <div className="mb-6">
-                        <span className={`block font-label-sm text-label-sm uppercase tracking-wider mb-1 ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Waiting</span>
-                        <span className={`font-display-lg text-display-lg ${isFirstTwo ? 'text-secondary-fixed' : stats.totalWaiting > 10 ? 'text-error' : 'text-primary'}`}>
-                          {stats.totalWaiting}<span className={`text-title-lg ml-1 ${isFirstTwo ? 'text-secondary-fixed-dim' : 'text-outline'}`}>patients</span>
+                        <span className="block font-label-sm text-label-sm uppercase tracking-wider mb-1 text-outline">Waiting</span>
+                        <span className={`font-display-lg text-display-lg ${stats.totalWaiting > 10 ? 'text-error' : 'text-primary'}`}>
+                          {stats.totalWaiting}<span className="text-title-lg ml-1 text-outline">patients</span>
                         </span>
                       </div>
                     </div>
-                    <div className={`flex justify-between items-center border-t pt-4 ${isFirstTwo ? 'border-surface-tint/30' : 'border-outline-variant/30'}`}>
+                    <div className="flex justify-between items-center border-t pt-4 border-outline-variant/30">
                       <div>
-                        <span className={`block font-label-sm text-label-sm ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Doctors</span>
-                        <span className={`font-title-lg text-title-lg font-medium ${isFirstTwo ? '' : 'text-primary'}`}>{stats.doctorCount} Active</span>
+                        <span className="block font-label-sm text-label-sm text-outline">Doctors</span>
+                        <span className="font-title-lg text-title-lg font-medium text-primary">{stats.doctorCount} Active</span>
                       </div>
                       <div>
-                        <span className={`block font-label-sm text-label-sm ${isFirstTwo ? 'text-primary-fixed-dim' : 'text-outline'}`}>Done Today</span>
-                        <span className={`font-title-lg text-title-lg font-medium ${isFirstTwo ? '' : 'text-primary'}`}>{stats.totalCompleted}</span>
+                        <span className="block font-label-sm text-label-sm text-outline">Done Today</span>
+                        <span className="font-title-lg text-title-lg font-medium text-primary">{stats.totalCompleted}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -237,47 +263,107 @@ export default function AdminDashboard() {
           </section>
         </div>
 
-        {/* Right Column: Live Activity Log */}
+        {/* Right Column: Analytics & Stats */}
         <motion.aside 
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="w-full xl:w-[400px] flex-shrink-0"
+          className="w-full xl:w-[400px] flex-shrink-0 flex flex-col gap-gutter"
         >
-          <div className="bg-white/70 backdrop-blur-2xl rounded-[32px] p-stack-lg shadow-premium-glass border border-white/50 h-full max-h-[800px] flex flex-col">
-            <div className="flex items-center gap-2 mb-stack-lg pb-4 border-b border-outline-variant/30">
-              <History className="text-secondary w-6 h-6" />
-              <h3 className="font-headline-md text-headline-md text-primary">Live Activity</h3>
-            </div>
+          {/* Today's Overview */}
+          <div className="bg-white/70 backdrop-blur-2xl rounded-[32px] p-stack-lg shadow-premium-glass border border-white/50 flex flex-col gap-4">
+            <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2">
+              <BarChart3 className="text-secondary w-6 h-6" />
+              Today's Overview
+            </h3>
             
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-              {[
-                { icon: <Receipt className="w-4 h-4" />, title: 'Token A-12 Generated', subtitle: 'Cardiology Walk-in', time: 'Just now', bg: 'bg-secondary-container text-white', statusColor: 'text-secondary' },
-                { icon: <Volume2 className="w-4 h-4" />, title: 'Dr. Chen called B-104', subtitle: 'Pediatrics • Room 3', time: '2 mins ago', bg: 'bg-surface-variant text-on-surface-variant border border-outline-variant/30', statusColor: 'text-outline' },
-                { icon: <CheckCircle className="w-4 h-4" />, title: 'Consultation Completed', subtitle: 'Patient C-45 • Neurology', time: '5 mins ago', bg: 'bg-emerald-100 text-emerald-700 border border-emerald-200', statusColor: 'text-outline' },
-                { icon: <AlertTriangle className="w-4 h-4" />, title: 'Emergency Admission', subtitle: 'Trauma Center • Code Blue', time: '12 mins ago', bg: 'bg-error-container text-on-error-container', statusColor: 'text-error' },
-                { icon: <Receipt className="w-4 h-4" />, title: 'Token D-88 Generated', subtitle: 'Orthopedics Walk-in', time: '15 mins ago', bg: 'bg-secondary-container text-white', statusColor: 'text-outline' }
-              ].map((log, index) => (
-                <div key={index} className="flex gap-4 relative">
-                  {index !== 4 && <div className="w-px h-full bg-outline-variant/50 absolute left-[15px] top-8"></div>}
-                  <div className={`w-8 h-8 rounded-full ${log.bg} flex items-center justify-center flex-shrink-0 z-10`}>
-                    {log.icon}
-                  </div>
-                  <div>
-                    <p className="font-body-md text-body-md text-primary font-medium">{log.title}</p>
-                    <p className="font-label-sm text-label-sm text-outline">{log.subtitle}</p>
-                    <span className={`font-label-sm text-label-sm ${log.statusColor} block mt-1`}>{log.time}</span>
-                  </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 flex flex-col">
+                <span className="text-outline flex items-center gap-1 font-label-sm uppercase tracking-wider mb-2"><Users className="w-4 h-4"/> Patients</span>
+                <span className="text-display-sm text-primary font-bold">{dailyAnalytics?.totalPatients || 0}</span>
+                <span className="text-label-sm text-emerald-600 bg-emerald-100 w-fit px-2 py-0.5 rounded-full mt-1">Total Today</span>
+              </div>
+              <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 flex flex-col">
+                <span className="text-outline flex items-center gap-1 font-label-sm uppercase tracking-wider mb-2"><CheckCircle className="w-4 h-4"/> Completed</span>
+                <span className="text-display-sm text-secondary font-bold">{dailyAnalytics?.completed || 0}</span>
+                <span className="text-label-sm text-secondary bg-secondary-container w-fit px-2 py-0.5 rounded-full mt-1">Consultations</span>
+              </div>
+              <div className="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant/30 flex flex-col col-span-2">
+                <span className="text-outline flex items-center gap-1 font-label-sm uppercase tracking-wider mb-2"><Clock4 className="w-4 h-4"/> Avg Wait Time</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-display-sm text-error font-bold">{dailyAnalytics?.avgWaitMinutes || 0}</span>
+                  <span className="text-title-md text-outline">minutes</span>
                 </div>
-              ))}
+                <span className="text-label-sm text-on-surface-variant mt-1">Busiest Hour: {dailyAnalytics?.busiestHour || 'N/A'}</span>
+              </div>
             </div>
+          </div>
+
+          {/* 7-Day Trend (Simple CSS Bar Chart) */}
+          <div className="bg-white/70 backdrop-blur-2xl rounded-[32px] p-stack-lg shadow-premium-glass border border-white/50 flex-1 flex flex-col">
+             <h3 className="font-headline-md text-headline-md text-primary flex items-center gap-2 mb-6">
+              <History className="text-secondary w-6 h-6" />
+              7-Day Patient Trend
+            </h3>
             
-            <button className="w-full mt-4 py-3 bg-white/50 hover:bg-white text-primary font-label-md text-label-md rounded-[12px] transition-colors border border-outline-variant/30 shadow-sm">
-              View Full History
-            </button>
+            <div className="flex-1 flex items-end justify-between gap-2 h-48 mt-auto border-b border-outline-variant/30 pb-2">
+              {trends?.dailyData?.map((day, i) => {
+                const maxVal = Math.max(...(trends?.dailyData?.map(d => d.totalPatients) || [1]), 1);
+                const heightPct = Math.round((day.totalPatients / maxVal) * 100);
+                return (
+                  <div key={i} className="flex flex-col items-center justify-end h-full gap-2 group flex-1">
+                    <span className="text-label-sm text-outline opacity-0 group-hover:opacity-100 transition-opacity">{day.totalPatients}</span>
+                    <div 
+                      className="w-full max-w-[32px] bg-secondary/80 hover:bg-secondary rounded-t-md transition-all duration-300"
+                      style={{ height: `${heightPct}%`, minHeight: '4px' }}
+                    ></div>
+                    <span className="text-label-sm text-on-surface-variant">{day.label}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </motion.aside>
       </main>
+
+      {/* Token Modal */}
+      {showTokenModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-md rounded-[32px] shadow-2xl p-stack-lg border ${modalPriority === 'EMERGENCY' ? 'bg-error-container/95 border-error/30 text-on-error-container' : 'bg-surface-container-lowest/95 border-outline-variant/30 text-on-surface'}`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-headline-sm font-bold flex items-center gap-2">
+                {modalPriority === 'EMERGENCY' ? <AlertTriangle className="text-error" /> : <Receipt className="text-secondary" />}
+                {modalPriority === 'EMERGENCY' ? 'Emergency Token' : 'Generate Walk-in'}
+              </h3>
+              <button onClick={() => setShowTokenModal(false)} className="hover:opacity-70"><X className="w-6 h-6" /></button>
+            </div>
+            
+            <form onSubmit={handleTokenSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-label-sm mb-1 opacity-80">Patient Email (Must be registered)</label>
+                <input required type="email" value={modalForm.patientEmail} onChange={e=>setModalForm({...modalForm, patientEmail: e.target.value})} className="w-full bg-white/50 border border-outline-variant rounded-xl px-4 py-2 focus:ring-2 focus:ring-secondary/50 outline-none text-on-surface" placeholder="patient@gmail.com" />
+              </div>
+              <div>
+                <label className="block text-label-sm mb-1 opacity-80">Doctor</label>
+                <select required value={modalForm.doctorId} onChange={e=>setModalForm({...modalForm, doctorId: parseInt(e.target.value)})} className="w-full bg-white/50 border border-outline-variant rounded-xl px-4 py-2 focus:ring-2 focus:ring-secondary/50 outline-none text-on-surface">
+                  {doctorsList.map(doc => <option key={doc.id} value={doc.id}>{doc.name} ({doc.department})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-label-sm mb-1 opacity-80">Symptoms / Notes</label>
+                <input required type="text" value={modalForm.symptoms} onChange={e=>setModalForm({...modalForm, symptoms: e.target.value})} className="w-full bg-white/50 border border-outline-variant rounded-xl px-4 py-2 focus:ring-2 focus:ring-secondary/50 outline-none text-on-surface" placeholder="e.g. Fever, chest pain..." />
+              </div>
+              <button type="submit" className={`mt-4 w-full py-3 rounded-xl font-title-md text-white shadow-sm transition-all ${modalPriority === 'EMERGENCY' ? 'bg-error hover:bg-error/90' : 'bg-primary hover:bg-primary/90'}`}>
+                {modalPriority === 'EMERGENCY' ? 'Override Queue' : 'Print Token'}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

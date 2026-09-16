@@ -19,20 +19,22 @@ const doctorRoutes = require('./routes/doctors');         // Doctors list/availa
 const tokenRoutes = require('./routes/tokens');           // Token book karna (patient ka appointment)
 const queueRoutes = require('./routes/queues');           // Queue manage karna (doctor calls next patient)
 const patientRoutes = require('./routes/patients');       // Patient apne tokens dekh sakta hai
+const analyticsRoutes = require('./routes/analytics');     // Analytics aur trends dekhne ke liye
 
 // ============================================
 // SERVER SETUP
 // ============================================
 const app = express(); // Express app banao — yeh hai tumhara server object
+const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Socket.io ke liye Express app ko HTTP server mein wrap karna padta hai
 // Kyunki Socket.io raw HTTP server pe kaam karta hai, Express pe nahi
 const server = http.createServer(app);
 
 // Socket.io server banao — real-time communication ke liye
-// cors: { origin: '*' } matlab koi bhi frontend connect kar sakta hai
+// CORS ko env ke basis par allow karo taaki local dev aur deployed frontend dono kaam kar sakein
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: { origin: frontendOrigin, methods: ['GET', 'POST'] }
 });
 
 // io ko Express app mein store karo taaki routes mein access kar sakein
@@ -52,7 +54,10 @@ io.on('connection', (socket) => {
 // MIDDLEWARES — Ye har request pe automatically chalte hain
 // Jaise building ke gate pe security guards — har visitor ko check karte hain
 // ============================================
-app.use(cors());          // "Doosre ports/domains se requests allow karo"
+app.use(cors({
+  origin: frontendOrigin,
+  credentials: true
+}));
 app.use(express.json());  // "JSON body ko parse karke req.body mein daalo"
                           // Bina iske req.body undefined hoga!
 
@@ -66,6 +71,7 @@ app.use('/api/doctors', doctorRoutes);         // /api/doctors (GET), /api/docto
 app.use('/api/tokens', tokenRoutes);           // /api/tokens/book, /api/tokens/emergency
 app.use('/api/queues', queueRoutes);           // /api/queues/call-next, /api/queues/complete, etc.
 app.use('/api/patients', patientRoutes);       // /api/patients/my-tokens, /api/patients/profile
+app.use('/api/analytics', analyticsRoutes);     // /api/analytics/daily, /api/analytics/trends
 
 // Health check — server alive hai ya nahi check karne ke liye
 // Production mein monitoring tools isse har 30 seconds ping karte hain

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { User, Clock, RefreshCw, Activity, RefreshCcw, Check, Play, BellRing } from 'lucide-react';
 import api from '../services/api';
 import socket from '../services/socket';
@@ -10,6 +10,7 @@ export default function QueueDashboard() {
   const [selectedDoctorId, setSelectedDoctorId] = useState(null);
   const [queueData, setQueueData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [approachingAlert, setApproachingAlert] = useState(null);
 
   // Fetch all doctors on mount
   useEffect(() => {
@@ -43,17 +44,27 @@ export default function QueueDashboard() {
     };
     fetchQueue();
 
-    // Socket.io — listen for real-time queue updates
     const handleQueueUpdate = (payload) => {
       if (payload.doctorId === selectedDoctorId) {
         fetchQueue(); // Refetch when this doctor's queue changes
       }
     };
+    
+    const handleApproaching = (payload) => {
+      if (payload.doctorId === selectedDoctorId) {
+        setApproachingAlert(payload.tokenNumber);
+        // Hide alert after 15 seconds
+        setTimeout(() => setApproachingAlert(null), 15000);
+      }
+    };
+    
     socket.connect();
     socket.on('queue-update', handleQueueUpdate);
+    socket.on('patient-approaching', handleApproaching);
 
     return () => {
       socket.off('queue-update', handleQueueUpdate);
+      socket.off('patient-approaching', handleApproaching);
     };
   }, [selectedDoctorId]);
 
@@ -89,6 +100,26 @@ export default function QueueDashboard() {
           </select>
         </div>
       </motion.header>
+
+      {/* Approaching Alert Toast */}
+      <AnimatePresence>
+        {approachingAlert && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-secondary-container text-on-secondary px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border-2 border-secondary/50"
+          >
+            <div className="w-12 h-12 rounded-full bg-secondary text-white flex items-center justify-center animate-bounce shadow-lg">
+              <BellRing className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-headline-sm text-headline-sm font-bold">Token #{approachingAlert}</h3>
+              <p className="font-body-lg text-body-lg text-on-secondary/90">Please get ready, your turn is approaching!</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Canvas */}
       <main className="pt-[100px] pb-section-gap px-margin-mobile md:px-margin-desktop max-w-container-max-width mx-auto flex-grow w-full z-10">

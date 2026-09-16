@@ -1,10 +1,10 @@
-// ============================================
-// AUTH MIDDLEWARE — Yeh security guard hai jo har protected route pe check karta hai
-// "Kya tere paas valid JWT token hai? Nahi hai toh nikal!"
-// Yeh middleware routes ke PEHLE chalta hai — route handler tab tak nahi chalega jab tak yeh pass nahi hota
-// ============================================
 
-const jwt = require('jsonwebtoken'); // JWT library — tokens verify karne ke liye
+// AUTH MIDDLEWARE — Yeh security guard hai jo har protected route pe check karta hai
+// Kya tere paas valid JWT token hai? Nahi hai toh nikal!
+// Yeh middleware routes ke PEHLE chalta hai — route handler tab tak nahi chalega jab tak yeh pass nahi hota
+
+
+const jwt = require('jsonwebtoken'); // JWT library  tokens verify karne ke liye
 
 // Middleware function — Express isko (req, res, next) ke saath call karta hai
 // next() = "Sab theek hai, aage jaao" (next middleware ya route handler pe)

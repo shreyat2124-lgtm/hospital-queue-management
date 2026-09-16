@@ -11,7 +11,7 @@ import { io } from 'socket.io-client'
 //
 // This socket will HEAR that event in real-time.
 
-const SOCKET_URL = 'http://localhost:3000'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
 
 // ─── Create the socket instance ─────────────────────────────────────
 // autoConnect: false → we don't connect immediately when the file loads.
