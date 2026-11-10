@@ -4,9 +4,6 @@ node_modules/
 # Environment variables
 .env
 
-# Personal study notes (keep local only)
-hospital-queue-roadmap.md
-
 # OS files
 .DS_Store
 Thumbs.db
